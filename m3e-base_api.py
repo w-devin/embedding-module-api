@@ -15,6 +15,7 @@ import tiktoken
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.preprocessing import PolynomialFeatures
+from typing import Union
 
 app = FastAPI()
 
@@ -26,8 +27,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class EmbeddingRequest(BaseModel):
+class EmbeddingProcessRequest(BaseModel):
     input: List[str]
+    model: str
+
+class EmbeddingQuestionRequest(BaseModel):
+    input: str
     model: str
 
 class EmbeddingResponse(BaseModel):
@@ -49,7 +54,7 @@ async def verify_token(request: Request):
 
 def num_tokens_from_string(string: str) -> int:
     """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding('cl100k_base')
+    encoding = tiktoken.get_encoding('p50k_base')
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
@@ -66,14 +71,24 @@ def expand_features(embedding, target_length):
     return expanded_embedding
 
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
-async def get_embeddings(request: EmbeddingRequest, token: bool = Depends(verify_token)):
-    print(request.input)
-    
-    # 计算嵌入向量和tokens数量 
-    embeddings = [embeddings_model.encode(text) for text in request.input]
+async def get_embeddings(request: Union[EmbeddingProcessRequest, EmbeddingQuestionRequest]):
+    if isinstance(request, EmbeddingProcessRequest): 
+        print('EmbeddingProcessRequest')
+        # data = request.input
+        # print(data)
+    elif isinstance(request, EmbeddingQuestionRequest): 
+        print('EmbeddingQuestionRequest')
+        # data = request.input
+        # print(data)
+    else:
+        print('Request')
+        data = await request.json()
+        print(data)
+        return
+
 
     # 如果嵌入向量的维度不为1536，则使用插值法扩展至1536维度 
-    embeddings = [expand_features(embedding, 1536) if len(embedding) < 1536 else embedding for embedding in embeddings]
+    #embeddings = [expand_features(embedding, 1536) if len(embedding) < 1536 else embedding for embedding in embeddings]
 
     # Min-Max normalization
     embeddings = [(embedding - np.min(embedding)) / (np.max(embedding) - np.min(embedding)) if np.max(embedding) != np.min(embedding) else embedding for embedding in embeddings]
@@ -99,6 +114,8 @@ async def get_embeddings(request: EmbeddingRequest, token: bool = Depends(verify
             "total_tokens": total_tokens,
         }
     }
+    
+    #print(response)
     
     return response
 
