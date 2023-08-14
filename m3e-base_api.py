@@ -1,6 +1,6 @@
 # coding=utf-8
 import time
-#import torch
+import torch
 import uvicorn
 from pydantic import BaseModel#, Field
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,20 +12,11 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from starlette.status import HTTP_401_UNAUTHORIZED
 #import argparse
 import tiktoken
-#import numpy as np
+import numpy as np
 from sentence_transformers import SentenceTransformer
-#from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI): # collects GPU memory
-    yield
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,7 +40,7 @@ async def verify_token(request: Request):
     auth_header = request.headers.get('Authorization')
     if auth_header:
         token_type, _, token = auth_header.partition(' ')
-        if token_type.lower() == "bearer" and token == "sk-aaabbbcccdddeeefffggghhhiiijjjkkk": # 这里配置你的token
+        if token_type.lower() == "bearer" and token == "sk-hv6xtPbK183j3RR306Fe23B6196b4d919a8e854887F6213d": # 这里配置你的token
             return True
     raise HTTPException(
         status_code=HTTP_401_UNAUTHORIZED,
@@ -76,7 +67,7 @@ def expand_features(embedding, target_length):
 
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
 async def get_embeddings(request: EmbeddingRequest, token: bool = Depends(verify_token)):
-    
+    print(request.input)
     
     # 计算嵌入向量和tokens数量 
     embeddings = [embeddings_model.encode(text) for text in request.input]
