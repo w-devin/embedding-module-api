@@ -72,14 +72,61 @@ def expand_features(embedding, target_length):
 
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
 async def get_embeddings(request: Union[EmbeddingProcessRequest, EmbeddingQuestionRequest]):
+    print(request.input)
     if isinstance(request, EmbeddingProcessRequest): 
         print('EmbeddingProcessRequest')
-        # data = request.input
-        # print(data)
+        embeddings = [embeddings_model.encode(text) for text in request.input]
+        
+        # 如果嵌入向量的维度不为1536，则使用插值法扩展至1536维度 
+        #embeddings = [expand_features(embedding, 1536) if len(embedding) < 1536 else embedding for embedding in embeddings]
+        
+        # Min-Max normalization
+        embeddings = [(embedding - np.min(embedding)) / (np.max(embedding) - np.min(embedding)) if np.max(embedding) != np.min(embedding) else embedding for embedding in embeddings]
+        
+        # 将numpy数组转换为列表
+        embeddings = [embedding.tolist() for embedding in embeddings]
+        prompt_tokens = sum(len(text.split()) for text in request.input)
+        total_tokens = sum(num_tokens_from_string(text) for text in request.input)
+
+        response = {
+            "data": [
+                {
+                    "embedding": embedding,
+                    "index": index,
+                    "object": "embedding"
+                } for index, embedding in enumerate(embeddings)
+            ],
+            "model": request.model,
+            "object": "list",
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "total_tokens": total_tokens,
+            }
+        }
     elif isinstance(request, EmbeddingQuestionRequest): 
         print('EmbeddingQuestionRequest')
-        # data = request.input
-        # print(data)
+        embedding = embeddings_model.encode(request.input)
+        embedding = (embedding - np.min(embedding)) / (np.max(embedding) - np.min(embedding)) if np.max(embedding) != np.min(embedding) else embedding
+
+        embedding = embedding.tolist()
+        prompt_tokens = len(request.input)
+        total_tokens = num_tokens_from_string(request.input)
+        
+        response = {
+            "data": [
+                {
+                    "embedding": embedding,
+                    "index": 0,
+                    "object": "embedding"
+                }
+            ],
+            "model": request.model,
+            "object": "list",
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "total_tokens": total_tokens,
+            }
+        }
     else:
         print('Request')
         data = await request.json()
@@ -87,33 +134,8 @@ async def get_embeddings(request: Union[EmbeddingProcessRequest, EmbeddingQuesti
         return
 
 
-    # 如果嵌入向量的维度不为1536，则使用插值法扩展至1536维度 
-    #embeddings = [expand_features(embedding, 1536) if len(embedding) < 1536 else embedding for embedding in embeddings]
 
-    # Min-Max normalization
-    embeddings = [(embedding - np.min(embedding)) / (np.max(embedding) - np.min(embedding)) if np.max(embedding) != np.min(embedding) else embedding for embedding in embeddings]
 
-    # 将numpy数组转换为列表
-    embeddings = [embedding.tolist() for embedding in embeddings]
-    prompt_tokens = sum(len(text.split()) for text in request.input)
-    total_tokens = sum(num_tokens_from_string(text) for text in request.input)
-
-    
-    response = {
-        "data": [
-            {
-                "embedding": embedding,
-                "index": index,
-                "object": "embedding"
-            } for index, embedding in enumerate(embeddings)
-        ],
-        "model": request.model,
-        "object": "list",
-        "usage": {
-            "prompt_tokens": prompt_tokens,
-            "total_tokens": total_tokens,
-        }
-    }
     
     #print(response)
     
