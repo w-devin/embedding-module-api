@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 6006
 
-CMD ["python3", "embedding_api.py"]
+CMD ["python3", "embedding_api.py", "moka-ai/m3e-large"]
