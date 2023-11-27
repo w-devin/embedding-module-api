@@ -124,4 +124,4 @@ async def get_embeddings(request: EmbeddingRequest, credentials: HTTPAuthorizati
 
 
 if __name__ == "__main__":
-    uvicorn.run("embedding_api:app", host='0.0.0.0', port=6008, workers=1)
+    uvicorn.run("embedding_api:app", host='0.0.0.0', port=6006, workers=1)
